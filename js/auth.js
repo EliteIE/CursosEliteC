@@ -1,82 +1,122 @@
 // Sistema de Autenticação e Controle de Acesso
+import config from './config.js';
 import notifications from './notifications.js';
 
-class AuthSystem {
+class AuthService {
     constructor() {
         this.currentUser = null;
-        this.roles = {
-            'admin': {
-                name: 'Dono/Gerente',
-                permissions: ['*'] // Acesso total
-            },
-            'stock': {
-                name: 'Controlador de Estoque',
-                permissions: [
-                    'view_products',
-                    'manage_products',
-                    'view_stock',
-                    'manage_stock',
-                    'view_reports'
-                ]
-            },
-            'sales': {
-                name: 'Vendedor',
-                permissions: [
-                    'view_products',
-                    'view_customers',
-                    'manage_customers',
-                    'create_sales',
-                    'view_own_sales'
-                ]
-            }
-        };
+        this.initialized = false;
     }
 
     async init() {
-        // Verificar se há uma sessão ativa
-        const session = localStorage.getItem('user_session');
-        if (session) {
-            try {
-                const userData = JSON.parse(session);
-                await this.validateSession(userData);
-            } catch (error) {
-                console.error('Erro ao restaurar sessão:', error);
-                this.logout();
+        if (this.initialized) return;
+
+        try {
+            // Verificar se o Firebase está disponível
+            if (!window.firebase || !window.firebase.auth) {
+                throw new Error('Firebase Auth não está disponível');
             }
+
+            // Observar mudanças no estado de autenticação
+            firebase.auth().onAuthStateChanged((user) => {
+                this.currentUser = user;
+                if (user) {
+                    console.log('Usuário autenticado:', user.email);
+                } else {
+                    console.log('Usuário não autenticado');
+                }
+            });
+
+            this.initialized = true;
+            console.log('AuthService inicializado');
+        } catch (error) {
+            console.error('Erro ao inicializar AuthService:', error);
+            throw error;
         }
     }
 
     async login(email, password) {
         try {
-            // Aqui você implementaria a chamada real para sua API de autenticação
-            const response = await this.mockAuthCall(email, password);
-            
-            if (response.success) {
-                this.currentUser = {
-                    id: response.user.id,
-                    name: response.user.name,
-                    email: response.user.email,
-                    role: response.user.role,
-                    permissions: this.roles[response.user.role].permissions
-                };
-
-                // Salvar sessão
-                localStorage.setItem('user_session', JSON.stringify(this.currentUser));
-                
-                notifications.success(`Bem-vindo, ${this.currentUser.name}!`);
-                return true;
-            }
+            const result = await firebase.auth().signInWithEmailAndPassword(email, password);
+            notifications.success('Login realizado com sucesso');
+            return result.user;
         } catch (error) {
             console.error('Erro no login:', error);
-            notifications.error('Erro ao fazer login. Tente novamente.');
+            notifications.error('Erro ao fazer login: ' + error.message);
+            throw error;
         }
-        return false;
     }
 
-    logout() {
-        this.currentUser = null;
-        localStorage.removeItem('user_session');
-        notifications.info('Você foi desconectado com sucesso.');
+    async logout() {
+        try {
+            await firebase.auth().signOut();
+            notifications.info('Logout realizado com sucesso');
+        } catch (error) {
+            console.error('Erro no logout:', error);
+            notifications.error('Erro ao fazer logout');
+            throw error;
+        }
+    }
+
+    async register(email, password, userData) {
+        try {
+            const result = await firebase.auth().createUserWithEmailAndPassword(email, password);
+            
+            // Adicionar dados adicionais ao perfil
+            await result.user.updateProfile({
+                displayName: userData.name
+            });
+
+            // Salvar dados adicionais no Firestore
+            await firebase.firestore().collection('users').doc(result.user.uid).set({
+                ...userData,
+                email,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            notifications.success('Registro realizado com sucesso');
+            return result.user;
+        } catch (error) {
+            console.error('Erro no registro:', error);
+            notifications.error('Erro ao registrar: ' + error.message);
+            throw error;
+        }
+    }
+
+    async resetPassword(email) {
+        try {
+            await firebase.auth().sendPasswordResetEmail(email);
+            notifications.success('Email de recuperação enviado');
+        } catch (error) {
+            console.error('Erro ao resetar senha:', error);
+            notifications.error('Erro ao enviar email de recuperação');
+            throw error;
+        }
+    }
+
+    async updateProfile(data) {
+        try {
+            const user = firebase.auth().currentUser;
+            if (!user) throw new Error('Usuário não autenticado');
+
+            // Atualizar perfil no Auth
+            await user.updateProfile({
+                displayName: data.name,
+                photoURL: data.photoURL
+            });
+
+            // Atualizar dados no Firestore
+            await firebase.firestore().collection('users').doc(user.uid).update({
+                ...data,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            notifications.success('Perfil atualizado com sucesso');
+        } catch (error) {
+            console.error('Erro ao atualizar perfil:', error);
+            notifications.error('Erro ao atualizar perfil');
+            throw error;
+        }
     }
 
     isAuthenticated() {
@@ -86,71 +126,10 @@ class AuthSystem {
     getCurrentUser() {
         return this.currentUser;
     }
-
-    hasPermission(permission) {
-        if (!this.currentUser) return false;
-        
-        // Admin tem todas as permissões
-        if (this.currentUser.permissions.includes('*')) return true;
-        
-        return this.currentUser.permissions.includes(permission);
-    }
-
-    async validateSession(userData) {
-        // Aqui você implementaria a validação real do token com seu backend
-        if (userData && userData.email && this.roles[userData.role]) {
-            this.currentUser = userData;
-            return true;
-        }
-        throw new Error('Sessão inválida');
-    }
-
-    // Mock para simulação de autenticação
-    async mockAuthCall(email, password) {
-        const testUsers = {
-            'admin@elitecontrol.com': {
-                id: '1',
-                name: 'Administrador Elite',
-                role: 'admin',
-                email: 'admin@elitecontrol.com'
-            },
-            'estoque@elitecontrol.com': {
-                id: '2',
-                name: 'Controlador de Estoque',
-                role: 'stock',
-                email: 'estoque@elitecontrol.com'
-            },
-            'vendas@elitecontrol.com': {
-                id: '3',
-                name: 'Vendedor Elite',
-                role: 'sales',
-                email: 'vendas@elitecontrol.com'
-            }
-        };
-
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                if (testUsers[email]) {
-                    resolve({
-                        success: true,
-                        user: testUsers[email]
-                    });
-                } else {
-                    resolve({
-                        success: false,
-                        error: 'Credenciais inválidas'
-                    });
-                }
-            }, 500); // Simular delay de rede
-        });
-    }
 }
 
 // Criar instância global
-const auth = new AuthSystem();
-
-// Inicializar sistema de autenticação
-auth.init().catch(console.error);
+const auth = new AuthService();
 
 // Exportar para uso em outros módulos
 export default auth; 
