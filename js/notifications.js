@@ -1,137 +1,128 @@
-// Sistema de Notificações Temporárias
-class NotificationSystem {
+// Serviço de Notificações
+class NotificationService {
     constructor() {
-        this.container = this.createContainer();
-        this.notifications = new Set();
+        this.container = null;
+        this.initialized = false;
+        this.queue = [];
+        this.config = {
+            position: 'top-right',
+            duration: 5000,
+            maxVisible: 5
+        };
     }
 
-    createContainer() {
-        const container = document.createElement('div');
-        container.className = 'notification-container';
-        container.style.cssText = `
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            max-width: 24rem;
-            pointer-events: none;
-        `;
-        document.body.appendChild(container);
-        return container;
+    init() {
+        if (this.initialized) return;
+
+        // Criar container de notificações
+        this.container = document.createElement('div');
+        this.container.className = 'notifications-container';
+        this.container.setAttribute('role', 'alert');
+        document.body.appendChild(this.container);
+
+        // Processar fila de notificações pendentes
+        this.queue.forEach(notification => this.show(notification));
+        this.queue = [];
+
+        this.initialized = true;
+        console.log('✅ Serviço de notificações inicializado');
     }
 
-    show(message, type = 'info', duration = 5000) {
-        const notification = this.createNotification(message, type);
-        this.notifications.add(notification);
-        
-        // Animar entrada
-        requestAnimationFrame(() => {
-            notification.classList.add('show');
-        });
+    show({ type, message, duration = this.config.duration }) {
+        // Se não inicializado, adicionar à fila
+        if (!this.initialized) {
+            this.queue.push({ type, message, duration });
+            return;
+        }
 
-        // Configurar remoção automática
-        setTimeout(() => {
-            this.dismiss(notification);
-        }, duration);
-
-        return notification;
-    }
-
-    createNotification(message, type) {
+        // Criar elemento de notificação
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
-        notification.style.cssText = `
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem;
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
-            border-left: 4px solid var(--color-${type});
-            border-radius: var(--border-radius-md);
-            box-shadow: var(--shadow-lg);
-            transform: translateX(100%);
-            opacity: 0;
-            transition: var(--transition-default);
-            backdrop-filter: blur(10px);
-            pointer-events: auto;
-            color: var(--color-text-light);
-        `;
-
+        
+        // Ícone baseado no tipo
         const icon = this.getIcon(type);
-        const content = document.createElement('div');
-        content.className = 'notification-content';
-        content.style.cssText = 'display: flex; align-items: center; gap: 0.75rem;';
-        content.innerHTML = `
-            <i class="${icon}" style="color: var(--color-${type})"></i>
-            <span>${message}</span>
+        
+        // Conteúdo da notificação
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="notification-icon ${icon}"></i>
+                <p class="notification-message">${message}</p>
+            </div>
+            <button class="notification-close" aria-label="Fechar">
+                <i class="fas fa-times"></i>
+            </button>
         `;
 
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'notification-close';
-        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
-        closeBtn.style.cssText = `
-            background: none;
-            border: none;
-            color: var(--color-text-muted);
-            cursor: pointer;
-            padding: 0.25rem;
-            margin-left: 0.75rem;
-            transition: var(--transition-fast);
-        `;
-        closeBtn.addEventListener('click', () => this.dismiss(notification));
-
-        notification.appendChild(content);
-        notification.appendChild(closeBtn);
+        // Adicionar ao container
         this.container.appendChild(notification);
 
-        return notification;
-    }
+        // Animar entrada
+        requestAnimationFrame(() => {
+            notification.classList.add('notification-show');
+        });
 
-    getIcon(type) {
-        const icons = {
-            success: 'fas fa-check-circle',
-            error: 'fas fa-exclamation-circle',
-            warning: 'fas fa-exclamation-triangle',
-            info: 'fas fa-info-circle'
-        };
-        return icons[type] || icons.info;
+        // Configurar botão de fechar
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.addEventListener('click', () => this.dismiss(notification));
+
+        // Auto-dismiss após duração
+        if (duration > 0) {
+            setTimeout(() => this.dismiss(notification), duration);
+        }
+
+        // Limitar número de notificações visíveis
+        const notifications = this.container.children;
+        if (notifications.length > this.config.maxVisible) {
+            this.dismiss(notifications[0]);
+        }
     }
 
     dismiss(notification) {
-        notification.style.transform = 'translateX(100%)';
-        notification.style.opacity = '0';
-        
+        // Animar saída
+        notification.classList.remove('notification-show');
+        notification.classList.add('notification-hide');
+
+        // Remover após animação
         setTimeout(() => {
             if (notification.parentNode === this.container) {
                 this.container.removeChild(notification);
-                this.notifications.delete(notification);
             }
         }, 300);
     }
 
+    getIcon(type) {
+        switch (type) {
+            case 'success':
+                return 'fas fa-check-circle';
+            case 'error':
+                return 'fas fa-times-circle';
+            case 'warning':
+                return 'fas fa-exclamation-triangle';
+            case 'info':
+                return 'fas fa-info-circle';
+            default:
+                return 'fas fa-bell';
+        }
+    }
+
     // Métodos de conveniência
     success(message, duration) {
-        return this.show(message, 'success', duration);
+        this.show({ type: 'success', message, duration });
     }
 
     error(message, duration) {
-        return this.show(message, 'error', duration);
+        this.show({ type: 'error', message, duration });
     }
 
     warning(message, duration) {
-        return this.show(message, 'warning', duration);
+        this.show({ type: 'warning', message, duration });
     }
 
     info(message, duration) {
-        return this.show(message, 'info', duration);
+        this.show({ type: 'info', message, duration });
     }
 }
 
-// Criar instância global
-const notifications = new NotificationSystem();
-
-// Exportar para uso em outros módulos
+// Exportar instância única
+const notifications = new NotificationService();
 export default notifications; 
