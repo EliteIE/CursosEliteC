@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EliteControl - Sistema de Gestão Inteligente</title>
+    
+    <!-- Fontes e Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Estilos -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-logo">
+                <button id="menuToggle" class="menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="header-logo-text">EliteControl</h1>
+            </div>
+            
+            <div class="header-actions">
+                <!-- Pesquisa Global -->
+                <div class="global-search">
+                    <button class="search-button">
+                        <i class="fas fa-search"></i>
+                        <span>Pesquisar...</span>
+                        <span class="search-shortcut">Ctrl + K</span>
+                    </button>
+                </div>
+                
+                <!-- Notificações -->
+                <button class="notification-button" data-action="toggle-notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge">3</span>
+                </button>
+                
+                <!-- Menu do Usuário -->
+                <div class="user-menu">
+                    <button class="user-button" data-action="toggle-user-menu">
+                        <div class="user-avatar">JS</div>
+                        <div class="user-info">
+                            <div class="user-name">João Silva</div>
+                            <div class="user-role">Administrador</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <nav class="nav-menu">
+            <div class="nav-section">
+                <a href="#" class="nav-link active" data-route="dashboard">
+                    <i class="fas fa-home nav-link-icon"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-link" data-route="sales">
+                    <i class="fas fa-shopping-cart nav-link-icon"></i>
+                    <span>Vendas</span>
+                </a>
+                <a href="#" class="nav-link" data-route="products">
+                    <i class="fas fa-box nav-link-icon"></i>
+                    <span>Produtos</span>
+                </a>
+                <a href="#" class="nav-link" data-route="customers">
+                    <i class="fas fa-users nav-link-icon"></i>
+                    <span>Clientes</span>
+                </a>
+                <a href="#" class="nav-link" data-route="reports">
+                    <i class="fas fa-chart-bar nav-link-icon"></i>
+                    <span>Relatórios</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Configurações</div>
+                <a href="#" class="nav-link" data-route="settings">
+                    <i class="fas fa-cog nav-link-icon"></i>
+                    <span>Configurações</span>
+                </a>
+                <a href="#" class="nav-link" data-action="logout">
+                    <i class="fas fa-sign-out-alt nav-link-icon"></i>
+                    <span>Sair</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <main id="mainContent" class="main-content">
+        <!-- O conteúdo será injetado aqui pelo router -->
+    </main>
+
+    <!-- Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
