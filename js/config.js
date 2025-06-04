@@ -5,12 +5,12 @@ const config = {
         name: 'EliteControl',
         version: '2.0',
         description: 'Sistema de Gestão Inteligente',
-        environment: process.env.NODE_ENV || 'development'
+        environment: 'development'
     },
 
     // Configurações de API
     api: {
-        baseUrl: process.env.API_URL || 'http://localhost:3000',
+        baseUrl: 'http://localhost:3000',
         timeout: 30000, // 30 segundos
         retryAttempts: 3
     },
@@ -114,7 +114,7 @@ const config = {
 
     // Configurações de Log
     logging: {
-        level: process.env.NODE_ENV === 'production' ? 'error' : 'debug',
+        level: 'debug',
         enabled: true,
         console: true,
         file: false
@@ -157,8 +157,8 @@ const config = {
     performance: {
         maxConcurrentRequests: 6,
         cacheEnabled: true,
-        minifyAssets: process.env.NODE_ENV === 'production',
-        compression: process.env.NODE_ENV === 'production'
+        minifyAssets: true,
+        compression: true
     },
 
     // Configurações de Segurança
