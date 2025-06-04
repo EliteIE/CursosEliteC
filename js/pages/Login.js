@@ -5,86 +5,125 @@ import notifications from '../notifications.js';
 
 export default function Login() {
     const container = document.createElement('div');
-    container.className = 'min-h-screen flex items-center justify-center p-4';
+    container.className = 'login-container';
+    
     container.innerHTML = `
-        <div class="w-full max-w-md">
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    EliteControl
-                </h1>
-                <p class="text-text-muted">Sistema de Gestão Inteligente</p>
+        <div class="login-card">
+            <div class="login-header">
+                <h1 class="login-title">EliteControl</h1>
+                <p class="login-subtitle">Sistema de Gestão Inteligente</p>
             </div>
             
-            <form id="loginForm" class="bg-surface border border-border rounded-lg p-8 shadow-lg backdrop-blur">
+            <form id="loginForm" class="login-form">
                 <div class="form-group">
-                    <label for="email" class="form-label">E-mail</label>
-                    <input type="email" id="email" class="form-input" required 
-                           placeholder="Seu e-mail de acesso">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" name="email" required 
+                           class="form-input" placeholder="seu@email.com">
                 </div>
                 
                 <div class="form-group">
-                    <label for="password" class="form-label">Senha</label>
-                    <input type="password" id="password" class="form-input" required 
-                           placeholder="Sua senha">
+                    <label for="password">Senha</label>
+                    <div class="password-input">
+                        <input type="password" id="password" name="password" required 
+                               class="form-input" placeholder="Sua senha">
+                        <button type="button" class="password-toggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 
-                <div class="flex items-center justify-between mb-6">
-                    <label class="flex items-center">
-                        <input type="checkbox" class="form-checkbox">
-                        <span class="ml-2 text-sm text-text-muted">Lembrar-me</span>
+                <div class="form-actions">
+                    <label class="remember-me">
+                        <input type="checkbox" name="remember">
+                        <span>Lembrar-me</span>
                     </label>
-                    
-                    <a href="#" class="text-sm text-primary hover:underline">
-                        Esqueceu a senha?
-                    </a>
+                    <a href="#" class="forgot-password">Esqueceu a senha?</a>
                 </div>
                 
-                <button type="submit" class="btn btn-primary w-full">
-                    Entrar no Sistema
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    Entrar
                 </button>
             </form>
             
-            <div class="mt-6 text-center">
-                <p class="text-sm text-text-muted">
-                    Usuários de teste:
-                </p>
-                <div class="mt-2 text-xs text-text-muted space-y-1">
-                    <p>admin@elitecontrol.com (Administrador)</p>
-                    <p>estoque@elitecontrol.com (Estoque)</p>
-                    <p>vendas@elitecontrol.com (Vendedor)</p>
-                    <p class="text-primary">Senha: qualquer valor</p>
-                </div>
+            <div class="login-footer">
+                <p>Não tem uma conta? <a href="#" class="register-link">Criar conta</a></p>
             </div>
         </div>
     `;
 
-    // Configurar evento de submit do formulário
+    // Adicionar eventos
     const form = container.querySelector('#loginForm');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const email = form.email.value;
         const password = form.password.value;
-        
-        // Desabilitar formulário durante o login
-        const submitBtn = form.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
+        const remember = form.remember.checked;
         
         try {
-            const success = await auth.login(email, password);
-            if (success) {
-                router.navigate('dashboard');
-            } else {
-                notifications.error('E-mail ou senha inválidos');
+            // Desabilitar formulário
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Entrando...';
+            
+            // Fazer login
+            await auth.login(email, password);
+            
+            // Se marcou "lembrar-me", persistir
+            if (remember) {
+                await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
             }
+            
+            // Redirecionar para dashboard
+            router.navigate('dashboard');
+            
         } catch (error) {
             console.error('Erro no login:', error);
-            notifications.error('Erro ao fazer login. Tente novamente.');
-        } finally {
+            notifications.error('E-mail ou senha inválidos');
+            
             // Reabilitar formulário
+            const submitBtn = form.querySelector('button[type="submit"]');
             submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Entrar no Sistema';
+            submitBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> Entrar';
+        }
+    });
+
+    // Toggle de senha
+    const passwordToggle = container.querySelector('.password-toggle');
+    const passwordInput = container.querySelector('#password');
+    
+    passwordToggle.addEventListener('click', () => {
+        const type = passwordInput.type === 'password' ? 'text' : 'password';
+        passwordInput.type = type;
+        passwordToggle.innerHTML = `<i class="fas fa-eye${type === 'password' ? '' : '-slash'}"></i>`;
+    });
+
+    // Link de registro
+    const registerLink = container.querySelector('.register-link');
+    registerLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        router.navigate('register');
+    });
+
+    // Link de esqueci a senha
+    const forgotLink = container.querySelector('.forgot-password');
+    forgotLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = form.email.value;
+        
+        if (!email) {
+            notifications.warning('Digite seu e-mail para recuperar a senha');
+            form.email.focus();
+            return;
+        }
+        
+        try {
+            await auth.resetPassword(email);
+            notifications.success('E-mail de recuperação enviado');
+        } catch (error) {
+            console.error('Erro ao resetar senha:', error);
+            notifications.error('Erro ao enviar e-mail de recuperação');
         }
     });
 
