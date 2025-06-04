@@ -1,11 +1,13 @@
 // Sistema de Rotas
 import auth from './auth.js';
 import notifications from './notifications.js';
+import config from './config.js';
 
 class Router {
     constructor() {
         this.routes = new Map();
         this.currentRoute = null;
+        this.beforeEach = null;
         this.defaultRoute = 'dashboard';
         
         // Configurar listener para mudanças na URL
@@ -65,8 +67,21 @@ class Router {
 
     // Manipular mudança de rota
     async handleRoute() {
-        const path = window.location.hash.slice(1) || this.defaultRoute;
-        await this.navigate(path, true);
+        const path = window.location.pathname.replace('/', '') || 'dashboard';
+        const route = this.routes.get(path);
+
+        if (!route) {
+            console.error('Rota não encontrada:', path);
+            return this.navigate('dashboard');
+        }
+
+        // Executar hook beforeEach
+        if (this.beforeEach) {
+            const next = () => this.loadRoute(route);
+            this.beforeEach(path, this.currentRoute, next);
+        } else {
+            await this.loadRoute(route);
+        }
     }
 
     // Renderizar componente da rota
@@ -113,62 +128,103 @@ class Router {
 
     // Inicializar router
     init() {
-        // Registrar rotas padrão
-        this.registerDefaultRoutes();
+        // Registrar rotas
+        this.registerRoutes();
         
         // Lidar com rota inicial
         this.handleRoute();
     }
 
     // Registrar rotas padrão do sistema
-    registerDefaultRoutes() {
-        // Dashboard
-        this.register('dashboard', {
-            component: () => import('./pages/Dashboard.js'),
-            title: 'Dashboard',
-            permission: 'view_dashboard'
-        });
-
-        // Produtos
-        this.register('products', {
-            component: () => import('./pages/Products.js'),
-            title: 'Produtos',
-            permission: 'view_products'
-        });
-
-        // Vendas
-        this.register('sales', {
-            component: () => import('./pages/Sales.js'),
-            title: 'Vendas',
-            permission: 'view_sales'
+    registerRoutes() {
+        // Página inicial/Dashboard
+        this.routes.set('dashboard', {
+            template: '/dashboard.html',
+            title: 'Dashboard - EliteControl',
+            load: async () => {
+                const module = await import('./pages/dashboard.js');
+                return module.default;
+            }
         });
 
         // Clientes
-        this.register('customers', {
-            component: () => import('./pages/Customers.js'),
-            title: 'Clientes',
-            permission: 'view_customers'
+        this.routes.set('customers', {
+            template: '/pages/customers.html',
+            title: 'Clientes - EliteControl',
+            load: async () => {
+                const module = await import('./pages/customers.js');
+                return module.default;
+            }
         });
 
-        // Relatórios
-        this.register('reports', {
-            component: () => import('./pages/Reports.js'),
-            title: 'Relatórios',
-            permission: 'view_reports'
+        // Vendas
+        this.routes.set('sales', {
+            template: '/pages/sales.html',
+            title: 'Vendas - EliteControl',
+            load: async () => {
+                const module = await import('./pages/sales.js');
+                return module.default;
+            }
         });
 
-        // Configurações
-        this.register('settings', {
-            component: () => import('./pages/Settings.js'),
-            title: 'Configurações',
-            permission: 'manage_settings'
+        // Produtos
+        this.routes.set('products', {
+            template: '/pages/products.html',
+            title: 'Produtos - EliteControl',
+            load: async () => {
+                const module = await import('./pages/products.js');
+                return module.default;
+            }
         });
 
         // Login
-        this.register('login', {
-            component: () => import('./pages/Login.js'),
-            title: 'Login',
-            layout: 'fullscreen'
+        this.routes.set('login', {
+            template: '/pages/login.html',
+            title: 'Login - EliteControl',
+            load: async () => {
+                const module = await import('./pages/login.js');
+                return module.default;
+            }
+        });
+    }
+
+    async loadRoute(route) {
+        try {
+            // Carregar template
+            const response = await fetch(route.template);
+            const html = await response.text();
+
+            // Atualizar conteúdo
+            const mainContent = document.getElementById('mainContent');
+            mainContent.innerHTML = html;
+
+            // Carregar e inicializar módulo da página
+            const pageModule = await route.load();
+            if (pageModule.init) {
+                await pageModule.init();
+            }
+
+            // Atualizar título
+            document.title = route.title;
+
+            // Atualizar navegação
+            this.updateNavigation();
+
+        } catch (error) {
+            console.error('Erro ao carregar rota:', error);
+            // TODO: Mostrar página de erro
+        }
+    }
+
+    updateNavigation() {
+        // Atualizar links ativos no menu
+        document.querySelectorAll('.nav-link').forEach(link => {
+            const route = link.dataset.route;
+            if (route === this.currentRoute) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
         });
     }
 }
