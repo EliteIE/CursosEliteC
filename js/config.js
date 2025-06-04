@@ -173,6 +173,32 @@ const config = {
         maxLoginAttempts: 5,
         lockoutDuration: 15 * 60 * 1000, // 15 minutos
         sessionTimeout: 30 * 60 * 1000 // 30 minutos
+    },
+
+    app: {
+        name: 'EliteControl',
+        version: '1.0.0',
+        environment: 'development'
+    },
+
+    firebase: {
+        apiKey: "AIzaSyD1t6vbSqI2s1Wsw3eGSMozWaZSTMDfukA",
+        authDomain: "elitecontrol-765fd.firebaseapp.com",
+        projectId: "elitecontrol-765fd",
+        storageBucket: "elitecontrol-765fd.appspot.com",
+        messagingSenderId: "939140418428",
+        appId: "1:939140418428:web:beeca76505e69329baf2f9",
+        measurementId: "G-PNDBZB9HR5"
+    },
+
+    theme: {
+        default: 'dark',
+        supportedThemes: ['light', 'dark']
+    },
+
+    routes: {
+        default: 'dashboard',
+        public: ['login', 'register', 'forgot-password']
     }
 };
 
