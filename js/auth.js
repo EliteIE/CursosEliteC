@@ -4,6 +4,7 @@ import notifications from './notifications.js';
 
 class AuthService {
     constructor() {
+        this.auth = firebase.auth();
         this.currentUser = null;
         this.initialized = false;
     }
@@ -12,32 +13,30 @@ class AuthService {
         if (this.initialized) return;
 
         try {
-            // Verificar se o Firebase está disponível
-            if (!window.firebase || !window.firebase.auth) {
-                throw new Error('Firebase Auth não está disponível');
-            }
-
-            // Observar mudanças no estado de autenticação
-            firebase.auth().onAuthStateChanged((user) => {
+            // Configurar observador de mudança de estado
+            this.auth.onAuthStateChanged((user) => {
                 this.currentUser = user;
                 if (user) {
-                    console.log('Usuário autenticado:', user.email);
+                    console.log('✅ Usuário autenticado:', user.email);
                 } else {
-                    console.log('Usuário não autenticado');
+                    console.log('❌ Usuário não autenticado');
                 }
             });
 
+            // Configurar persistência
+            await this.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+            
             this.initialized = true;
-            console.log('AuthService inicializado');
+            console.log('✅ Serviço de autenticação inicializado');
         } catch (error) {
-            console.error('Erro ao inicializar AuthService:', error);
+            console.error('❌ Erro ao inicializar autenticação:', error);
             throw error;
         }
     }
 
     async login(email, password) {
         try {
-            const result = await firebase.auth().signInWithEmailAndPassword(email, password);
+            const result = await this.auth.signInWithEmailAndPassword(email, password);
             notifications.success('Login realizado com sucesso');
             return result.user;
         } catch (error) {
@@ -49,7 +48,7 @@ class AuthService {
 
     async logout() {
         try {
-            await firebase.auth().signOut();
+            await this.auth.signOut();
             notifications.info('Logout realizado com sucesso');
         } catch (error) {
             console.error('Erro no logout:', error);
@@ -60,7 +59,7 @@ class AuthService {
 
     async register(email, password, userData) {
         try {
-            const result = await firebase.auth().createUserWithEmailAndPassword(email, password);
+            const result = await this.auth.createUserWithEmailAndPassword(email, password);
             
             // Adicionar dados adicionais ao perfil
             await result.user.updateProfile({
@@ -85,7 +84,7 @@ class AuthService {
 
     async resetPassword(email) {
         try {
-            await firebase.auth().sendPasswordResetEmail(email);
+            await this.auth.sendPasswordResetEmail(email);
             notifications.success('Email de recuperação enviado');
         } catch (error) {
             console.error('Erro ao resetar senha:', error);
@@ -96,21 +95,10 @@ class AuthService {
 
     async updateProfile(data) {
         try {
-            const user = firebase.auth().currentUser;
+            const user = this.auth.currentUser;
             if (!user) throw new Error('Usuário não autenticado');
 
-            // Atualizar perfil no Auth
-            await user.updateProfile({
-                displayName: data.name,
-                photoURL: data.photoURL
-            });
-
-            // Atualizar dados no Firestore
-            await firebase.firestore().collection('users').doc(user.uid).update({
-                ...data,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
+            await user.updateProfile(data);
             notifications.success('Perfil atualizado com sucesso');
         } catch (error) {
             console.error('Erro ao atualizar perfil:', error);
@@ -119,12 +107,42 @@ class AuthService {
         }
     }
 
-    isAuthenticated() {
-        return !!this.currentUser;
+    async updateEmail(newEmail) {
+        try {
+            const user = this.auth.currentUser;
+            if (!user) throw new Error('Usuário não autenticado');
+
+            await user.updateEmail(newEmail);
+            notifications.success('E-mail atualizado com sucesso');
+        } catch (error) {
+            console.error('Erro ao atualizar e-mail:', error);
+            throw error;
+        }
+    }
+
+    async updatePassword(newPassword) {
+        try {
+            const user = this.auth.currentUser;
+            if (!user) throw new Error('Usuário não autenticado');
+
+            await user.updatePassword(newPassword);
+            notifications.success('Senha atualizada com sucesso');
+        } catch (error) {
+            console.error('Erro ao atualizar senha:', error);
+            throw error;
+        }
     }
 
     getCurrentUser() {
-        return this.currentUser;
+        return this.auth.currentUser;
+    }
+
+    isAuthenticated() {
+        return !!this.auth.currentUser;
+    }
+
+    onAuthStateChanged(callback) {
+        return this.auth.onAuthStateChanged(callback);
     }
 }
 
